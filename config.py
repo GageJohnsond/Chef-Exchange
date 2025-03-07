@@ -88,7 +88,7 @@ COMMANDS = {
     ],
     "Info": [
         ("!about", "About this bot"),
-        ("!what", "Show this command menu")
+        ("!help", "Show this command menu")
     ]
 }
 

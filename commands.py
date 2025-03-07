@@ -183,7 +183,7 @@ def about(ctx):
     
     embed.add_field(
         name="Commands",
-        value="Type `!what` to see all available commands."
+        value="Type `!help` to see all available commands."
     )
     
     return embed
@@ -256,7 +256,8 @@ async def process_command(bot, message):
             return help(ctx)
         
         else:
-            return f"⚠️ {message.author.mention}, invalid command. See !help."
+            return f"⚠️ {message.author.mention}, invalid command. See !help"
+
         
         # Unknown command
         return False

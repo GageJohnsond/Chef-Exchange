@@ -9,3 +9,10 @@ __pycache__/
 # Ignore logs
 bot.log
 *.log
+
+#Ignore json
+user_data.json
+stocks.json
+stocks_messages.json
+leaderboard_messages.json
+*.json

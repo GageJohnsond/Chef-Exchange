@@ -5,6 +5,7 @@ Contains all event listener functions
 import asyncio
 import logging
 import random
+import pytz
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
@@ -76,7 +77,10 @@ class EventHandlers:
         # Award points for active channels
         if message.channel.id in config.ACTIVE_CHANNEL_IDS:
             user_id = str(message.author.id)
-            today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            utc_now = datetime.now(pytz.utc)
+            eastern = pytz.timezone("America/New_York")
+            est_now = utc_now.astimezone(eastern)
+            today = est_now.strftime("%Y-%m-%d")
             data = DataManager.ensure_user(message.author.id)
             
             # Check for daily cap reset

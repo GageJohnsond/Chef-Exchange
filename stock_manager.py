@@ -5,6 +5,7 @@ Handles stock data, market conditions, and price updates
 import json
 import random
 import logging
+import pytz
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Tuple, Optional, Union
 from io import BytesIO
@@ -268,7 +269,10 @@ class StockManager:
                 data[str(user_id)]["purchase_dates"] = {}
             
             # Get current date
-            today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            utc_now = datetime.now(pytz.utc)
+            eastern = pytz.timezone("America/New_York")
+            est_now = utc_now.astimezone(eastern)
+            today = est_now.strftime("%Y-%m-%d")
             
             # Record this purchase
             if symbol not in data[str(user_id)]["purchase_dates"]:
@@ -314,7 +318,10 @@ class StockManager:
         if str(user_id) in data and "purchase_dates" in data[str(user_id)]:
             purchase_dates = data[str(user_id)].get("purchase_dates", {})
             if symbol in purchase_dates and purchase_dates[symbol]:
-                today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                utc_now = datetime.now(pytz.utc)
+                eastern = pytz.timezone("America/New_York")
+                est_now = utc_now.astimezone(eastern)
+                today = est_now.strftime("%Y-%m-%d")
                 
                 # Check if any purchases were made today
                 if today in purchase_dates[symbol]:

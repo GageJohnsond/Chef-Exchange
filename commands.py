@@ -5,6 +5,7 @@ Contains all bot command definitions
 import random
 import logging
 from datetime import datetime, timezone
+import pytz
 
 import discord
 from discord.ext import commands
@@ -41,7 +42,10 @@ def daily(ctx):
     """Claim daily reward command"""
     data = DataManager.ensure_user(ctx.author.id)
     user_id = str(ctx.author.id)
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    utc_now = datetime.now(pytz.utc)
+    eastern = pytz.timezone("America/New_York")
+    est_now = utc_now.astimezone(eastern)
+    today = est_now.strftime("%Y-%m-%d")
     last_claimed = data[user_id].get("last_daily", None)
     
     if last_claimed == today:

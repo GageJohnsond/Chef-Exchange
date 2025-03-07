@@ -13,7 +13,7 @@ import config
 from data_manager import DataManager
 from user_manager import UserManager
 from stock_manager import StockManager
-from ui_components import ChartView, WhatView, BalanceLeaderboardView, StockLeaderboardView
+from ui_components import ChartView, HelpView, BalanceLeaderboardView, StockLeaderboardView
 
 logger = logging.getLogger('ch3f_exchange.commands')
 
@@ -183,14 +183,14 @@ def about(ctx):
     
     embed.add_field(
         name="Commands",
-        value="Type `!what` to see all available commands."
+        value="Type `!help` to see all available commands."
     )
     
     return embed
 
-def what(ctx):
+def help(ctx):
     """Display command list"""
-    view = WhatView()
+    view = HelpView()
     return view.get_embed()
 
 async def process_command(bot, message):
@@ -252,8 +252,11 @@ async def process_command(bot, message):
         elif command == 'about':
             return about(ctx)
         
-        elif command == 'what':
-            return what(ctx)
+        elif command == 'help':
+            return help(ctx)
+        
+        else:
+            return f"⚠️ {message.author.mention}, invalid command. See !help"
         
         # Unknown command
         return False

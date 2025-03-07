@@ -276,7 +276,7 @@ class StockLeaderboardView(View):
         embed = self.get_embed()
         await self.message.edit(embed=embed, view=self)
 
-class WhatView(View):
+class HelpView(View):
     """Command help view"""
     
     def __init__(self):
@@ -315,7 +315,7 @@ class WhatView(View):
             name="ℹ️ Info Commands",
             value=(
                 "`!about` - About this bot\n"
-                "`!what` - Show this command menu"
+                "`!help` - Show this command menu"
             ),
             inline=False
         )

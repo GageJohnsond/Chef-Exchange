@@ -40,17 +40,34 @@ class ChartView(View):
             emoji = "📈" if pct_change >= 0 else "📉"
             change_str = f" {emoji} {pct_change:.1f}%"
         
+        # Create embed with market condition info
         embed = discord.Embed(
             title=f"{self.symbol} | Price - ${price:.2f} CCD{change_str}",
             color=config.COLOR_INFO
         )
         embed.set_image(url="attachment://chart.png")
         
+        # Add market condition footer
+        market_emoji = {
+            "bull": "📈",
+            "bear": "📉",
+            "volatile": "⚠️",
+            "stable": "🔄"
+        }.get(StockManager.market_condition, "🔄")
+        
         if len(price_history) > 1:
-            # Add price info footer
+            # Add price info and market info to footer
             start_price = price_history[0]
             overall_change = ((price - start_price) / start_price) * 100
-            embed.set_footer(text=f"Starting price: ${start_price:.2f} | Overall change: {overall_change:.1f}%")
+            
+            embed.set_footer(
+                text=f"Starting: ${start_price:.2f} | Overall: {overall_change:.1f}% | "
+                f"Market: {market_emoji} {StockManager.market_condition.upper()}"
+            )
+        else:
+            embed.set_footer(
+                text=f"Market: {market_emoji} {StockManager.market_condition.upper()}"
+            )
         
         return file, embed
     
@@ -81,11 +98,13 @@ class ChartView(View):
         UserManager.update_balance(user_id, -price)
         UserManager.add_item(user_id, self.symbol)
         
-        # Update stock price
-        StockManager.buy_stock(self.symbol)
+        # Update stock price - now tracks purchase date
+        StockManager.buy_stock(self.symbol, user_id)
         
+        # Add warning about same-day selling fee
         await interaction.response.send_message(
-            f"✅ {interaction.user.mention} bought a share of {self.symbol} for ${price:.2f} CCD.", 
+            f"✅ {interaction.user.mention} bought a share of {self.symbol} for ${price:.2f} CCD.\n"
+            f"⚠️ *Note: Selling this stock today will incur a ${config.SELLING_FEE:.2f} CCD day trading fee.*", 
             ephemeral=True
         )
         await self.update_chart()
@@ -104,20 +123,23 @@ class ChartView(View):
             )
             return
         
-        # Get selling price and update stock
+        # Get selling price and update stock - now includes same_day_sale flag
         base_price = StockManager.stock_prices[self.symbol]
-        final_price = StockManager.sell_stock(self.symbol)
+        final_price, same_day_sale = StockManager.sell_stock(self.symbol, user_id)
         
         # Process sale
         UserManager.update_balance(user_id, final_price)
         UserManager.remove_item(user_id, self.symbol)
         
-        fee = base_price - final_price
+        # Create message based on whether fee was applied
+        if same_day_sale:
+            fee = base_price - final_price
+            message = (f"💰 {interaction.user.mention} sold a share of {self.symbol} for "
+                      f"${final_price:.2f} CCD (day trading fee: ${fee:.2f}).")
+        else:
+            message = f"💰 {interaction.user.mention} sold a share of {self.symbol} for ${final_price:.2f} CCD."
         
-        await interaction.response.send_message(
-            f"💰 {interaction.user.mention} sold a share of {self.symbol} for ${final_price:.2f} CCD (fee: ${fee:.2f}).", 
-            ephemeral=True
-        )
+        await interaction.response.send_message(message, ephemeral=True)
         await self.update_chart()
     
     @discord.ui.button(label="Buy", style=discord.ButtonStyle.primary)
@@ -137,24 +159,40 @@ class BalanceLeaderboardView(View):
         self.message = None
     
     def get_embed(self, guild):
-        """Generate the balance leaderboard embed"""
+        """Generate the balance leaderboard embed with portfolio values"""
         from data_manager import DataManager
         data = DataManager.load_data(config.USER_DATA_FILE)
         
-        # Collect user balances
-        user_balances = []
+        # Collect user balances and portfolio values
+        user_totals = []
         for uid, udata in data.items():
-            user_balances.append((int(uid), udata["balance"]))
+            # Calculate portfolio value
+            portfolio_value = 0
+            inventory = udata.get("inventory", {})
+            for stock, quantity in inventory.items():
+                if stock in StockManager.stock_prices:
+                    stock_value = StockManager.stock_prices[stock] * quantity
+                    portfolio_value += stock_value
+            
+            # Calculate total worth (cash + portfolio)
+            total_worth = udata["balance"] + portfolio_value
+            
+            user_totals.append((
+                int(uid), 
+                udata["balance"],  # Cash balance
+                portfolio_value,   # Portfolio value
+                total_worth        # Total worth
+            ))
         
-        # Sort by balance (highest first)
-        user_balances.sort(key=lambda x: x[1], reverse=True)
+        # Sort by total worth (highest first)
+        user_totals.sort(key=lambda x: x[3], reverse=True)
         
         # Create leaderboard content
         desc = ""
         rank_emoji = ["🥇", "🥈", "🥉"]
         
-        # Show all users instead of just top 10
-        for i, (uid, bal) in enumerate(user_balances):
+        # Show all users
+        for i, (uid, balance, portfolio, total) in enumerate(user_totals):
             # Get member object for nickname support if guild is available
             name = f"User {uid}"
             if guild:
@@ -164,20 +202,22 @@ class BalanceLeaderboardView(View):
             
             # Add emoji for top 3
             prefix = f"{rank_emoji[i]} " if i < 3 else f"{i+1}. "
-            desc += f"{prefix}{name}: **${bal:.2f} CCD**\n"
+            
+            # Format with cash + portfolio = total
+            desc += f"{prefix}{name}: **${total:.2f} CCD**\n"
         
         if not desc:
             desc = "No users found in the database."
         
         # Create embed
         embed = discord.Embed(
-            title="🏆 $CCD Leaderboard",
+            title="🏆 $CCD Total Worth Leaderboard",
             description=desc,
             color=config.COLOR_WARNING
         )
         
         # Add timestamp
-        embed.set_footer(text=f"Last updated")
+        embed.set_footer(text=f"Last updated | Cash + Portfolio = Total Worth")
         embed.timestamp = discord.utils.utcnow()
         
         return embed

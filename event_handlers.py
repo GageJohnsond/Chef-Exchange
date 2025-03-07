@@ -147,7 +147,7 @@ class EventHandlers:
         """Periodically update stock prices and edit existing messages"""
         logger.info("📊 Updating stock prices...")
         
-        # Update stock prices
+        # Update stock prices - but ignore the market condition message
         StockManager.update_prices()
         
         # Edit stock messages

@@ -1,4 +1,0 @@
-2025-03-06 21:42:09,125 - ch3f_exchange - INFO - Starting CH3F Exchange bot...
-2025-03-06 21:42:09,125 - discord.client - WARNING - PyNaCl is not installed, voice will NOT be supported
-2025-03-06 21:42:09,126 - ch3f_exchange.commands - INFO - Setting up command processor
-2025-03-06 21:42:09,126 - ch3f_exchange - ERROR - No Discord bot token found! Please set the DISCORD_BOT_TOKEN environment variable.

@@ -160,60 +160,77 @@ class StockManager:
         except Exception as e:
             logger.error(f"Error saving stock message IDs: {e}")
     
-    @classmethod
-    def check_market_condition(cls) -> None:
-        """
-        Check and potentially update market condition based on daily schedule.
-        """
-        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        
-        # Skip if already updated today
-        if cls.last_condition_change == today:
-            return
-        
-        # Define possible market conditions with their properties
-        conditions = [
-            {
-                "name": "bear", 
-                "weight": 0.2,
-                "min_change": random.uniform(-4, -1),
-                "max_change": random.uniform(-1, 2),
-            },
-            {
-                "name": "bull", 
-                "weight": 0.2,
-                "min_change": random.uniform(-1, 1),
-                "max_change": random.uniform(2, 4),
-            },
-            {
-                "name": "volatile", 
-                "weight": 0.2,
-                "min_change": random.uniform(-7, -3),
-                "max_change": random.uniform(3, 7),
-            },
-            {
-                "name": "stable", 
-                "weight": 0.4,
-                "min_change": random.uniform(-3, -1),
-                "max_change": random.uniform(1, 3),
-            }
-        ]
-        
-        # Choose new market condition weighted by probabilities
-        weights = [c["weight"] for c in conditions]
-        new_condition = random.choices(conditions, weights=weights, k=1)[0]
-        
-        # Update market state
-        cls.market_condition = new_condition["name"]
-        cls.current_min_change = new_condition["min_change"]
-        cls.current_max_change = new_condition["max_change"]
-        cls.last_condition_change = today
-        
-        # Save the changes
-        cls.save_stocks()
-        
-        logger.info(f"Market condition changed to {cls.market_condition}: " 
-                    f"min={cls.current_min_change:.2f}, max={cls.current_max_change:.2f}")
+@classmethod
+def check_market_condition(cls) -> None:
+    """
+    Check and potentially update market condition based on 6-hour schedule.
+    """
+    now = datetime.now(timezone.utc)
+    current_time = now.strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Format last condition change time if it exists
+    if cls.last_condition_change:
+        try:
+            # Try to parse the stored datetime string
+            last_change_time = datetime.strptime(cls.last_condition_change, "%Y-%m-%d %H:%M:%S")
+            # Add timezone info
+            last_change_time = last_change_time.replace(tzinfo=timezone.utc)
+            
+            # Check if 6 hours have passed
+            time_diff = now - last_change_time
+            hours_passed = time_diff.total_seconds() / 3600
+            
+            # If less than 6 hours have passed, don't update
+            if hours_passed < 6:
+                return
+                
+        except ValueError:
+            # If there's an error parsing the date, force an update
+            logger.warning("Could not parse last condition change time. Forcing market update.")
+    
+    # Define possible market conditions with their properties
+    conditions = [
+        {
+            "name": "bear", 
+            "weight": 0.2,
+            "min_change": random.uniform(-5, -1),
+            "max_change": random.uniform(-1, 2),
+        },
+        {
+            "name": "bull", 
+            "weight": 0.2,
+            "min_change": random.uniform(-1, 1),
+            "max_change": random.uniform(2, 5),
+        },
+        {
+            "name": "volatile", 
+            "weight": 0.2,
+            "min_change": random.uniform(-7, -3),
+            "max_change": random.uniform(3, 7),
+        },
+        {
+            "name": "stable", 
+            "weight": 0.4,
+            "min_change": random.uniform(-3, -1),
+            "max_change": random.uniform(1, 3),
+        }
+    ]
+    
+    # Choose new market condition weighted by probabilities
+    weights = [c["weight"] for c in conditions]
+    new_condition = random.choices(conditions, weights=weights, k=1)[0]
+    
+    # Update market state
+    cls.market_condition = new_condition["name"]
+    cls.current_min_change = new_condition["min_change"]
+    cls.current_max_change = new_condition["max_change"]
+    cls.last_condition_change = current_time
+    
+    # Save the changes
+    cls.save_stocks()
+    
+    logger.info(f"Market condition changed to {cls.market_condition}: " 
+                f"min={cls.current_min_change:.2f}, max={cls.current_max_change:.2f}")
     
     @classmethod
     def update_prices(cls) -> None:

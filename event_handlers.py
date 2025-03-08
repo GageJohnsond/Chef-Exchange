@@ -125,12 +125,12 @@ class EventHandlers:
             data[message_author_id]["balance"] += reward
             logger.debug(f"Awarded {reward} to message author {message_author_id} for reaction")
         
-        reactor_reward = random.randint(
-            config.REACTION_REWARD_REACTOR_MIN, 
-            config.REACTION_REWARD_REACTOR_MAX
-        )
-        data[reactor_id]["balance"] += reactor_reward
-        logger.debug(f"Awarded {reactor_reward} to reactor {reactor_id}")
+            reactor_reward = random.randint(
+                config.REACTION_REWARD_REACTOR_MIN, 
+                config.REACTION_REWARD_REACTOR_MAX
+            )
+            data[reactor_id]["balance"] += reactor_reward
+            logger.debug(f"Awarded {reactor_reward} to reactor {reactor_id}")
         
         DataManager.save_data(config.USER_DATA_FILE, data)
     

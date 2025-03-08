@@ -53,7 +53,7 @@ class ChartView(View):
             overall_change = ((price - start_price) / start_price) * 100
             
             embed.set_footer(
-                text=f"Starting: ${start_price:.2f} | Overall: {overall_change:.1f}% | "
+                text=f"Starting: ${start_price:.2f} | Overall: {overall_change:.1f}%"
             )
         
         return file, embed

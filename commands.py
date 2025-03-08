@@ -261,10 +261,6 @@ async def process_command(bot, message):
         
         else:
             return f"⚠️ {message.author.mention}, invalid command. See !help"
-
-        
-        # Unknown command
-        return False
     
     except Exception as e:
         logger.error(f"Error processing command {command}: {e}", exc_info=True)

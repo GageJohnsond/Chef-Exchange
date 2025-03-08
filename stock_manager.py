@@ -175,15 +175,15 @@ class StockManager:
         conditions = [
             {
                 "name": "bear", 
-                "weight": 0.25,
-                "min_change": random.uniform(-5, -2),
+                "weight": 0.2,
+                "min_change": random.uniform(-4, -1),
                 "max_change": random.uniform(-1, 2),
             },
             {
                 "name": "bull", 
-                "weight": 0.25,
+                "weight": 0.2,
                 "min_change": random.uniform(-1, 1),
-                "max_change": random.uniform(2, 5),
+                "max_change": random.uniform(2, 4),
             },
             {
                 "name": "volatile", 
@@ -193,7 +193,7 @@ class StockManager:
             },
             {
                 "name": "stable", 
-                "weight": 0.3,
+                "weight": 0.4,
                 "min_change": random.uniform(-3, -1),
                 "max_change": random.uniform(1, 3),
             }
@@ -237,7 +237,7 @@ class StockManager:
             cls.stock_prices[symbol] = round(new_price, 2)
             cls.price_history[symbol].append(round(new_price, 2))
             
-            # Keep history at a reasonable size (last 100 updates)
+            # Keep history at last 100 updates
             if len(cls.price_history[symbol]) > 100:
                 cls.price_history[symbol] = cls.price_history[symbol][-100:]
         
@@ -447,7 +447,7 @@ class StockManager:
         else:
             color = 'blue'
             
-        ax.plot(x_values, history, marker='o', color=color, linestyle='-')
+        ax.plot(x_values, history, color=color, linestyle='-')
         
         # Add labels and grid
         ax.set_xlabel("Time Steps")

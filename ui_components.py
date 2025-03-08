@@ -47,14 +47,6 @@ class ChartView(View):
         )
         embed.set_image(url="attachment://chart.png")
         
-        # Add market condition footer
-        market_emoji = {
-            "bull": "📈",
-            "bear": "📉",
-            "volatile": "⚠️",
-            "stable": "🔄"
-        }.get(StockManager.market_condition, "🔄")
-        
         if len(price_history) > 1:
             # Add price info and market info to footer
             start_price = price_history[0]
@@ -62,11 +54,6 @@ class ChartView(View):
             
             embed.set_footer(
                 text=f"Starting: ${start_price:.2f} | Overall: {overall_change:.1f}% | "
-                f"Market: {market_emoji} {StockManager.market_condition.upper()}"
-            )
-        else:
-            embed.set_footer(
-                text=f"Market: {market_emoji} {StockManager.market_condition.upper()}"
             )
         
         return file, embed

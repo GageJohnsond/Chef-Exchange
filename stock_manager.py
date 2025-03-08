@@ -195,14 +195,14 @@ class StockManager:
             {
                 "name": "bear", 
                 "weight": 0.2,
-                "min_change": random.uniform(-4, -1),
+                "min_change": random.uniform(-5, -1),
                 "max_change": random.uniform(-1, 2),
             },
             {
                 "name": "bull", 
                 "weight": 0.2,
                 "min_change": random.uniform(-1, 1),
-                "max_change": random.uniform(2, 4),
+                "max_change": random.uniform(2, 5),
             },
             {
                 "name": "volatile", 

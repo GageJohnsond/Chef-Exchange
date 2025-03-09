@@ -265,6 +265,8 @@ async def process_command(bot, message):
     except Exception as e:
         logger.error(f"Error processing command {command}: {e}", exc_info=True)
         return f"An error occurred: {str(e)}"
+    
+    return False
 
 def setup(bot):
     """Setup commands"""

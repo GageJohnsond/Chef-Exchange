@@ -183,7 +183,7 @@ class StockManager:
                 hours_passed = time_diff.total_seconds() / 3600
                 
                 # If less than 6 hours have passed, don't update
-                if hours_passed < 6:
+                if hours_passed < 9:
                     return
                     
             except ValueError:

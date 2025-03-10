@@ -259,9 +259,6 @@ async def process_command(bot, message):
         elif command == 'help':
             return help(ctx)
         
-        else:
-            return f"⚠️ {message.author.mention}, invalid command. See !help"
-    
     except Exception as e:
         logger.error(f"Error processing command {command}: {e}", exc_info=True)
         return f"An error occurred: {str(e)}"

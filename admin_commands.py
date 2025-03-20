@@ -9,7 +9,7 @@ import asyncio
 import discord
 
 import config
-from commands import create_stock_screener
+from utils import create_stock_screener
 from data_manager import DataManager
 from user_manager import UserManager
 from stock_manager import StockManager

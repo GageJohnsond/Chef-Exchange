@@ -12,6 +12,7 @@ from discord.ext import commands
 
 import config
 import admin_commands
+from utils import create_stock_screener
 from data_manager import DataManager
 from user_manager import UserManager
 from stock_manager import StockManager
@@ -230,35 +231,6 @@ async def create_stock(ctx, symbol, bot=None):
     )
     
     return embed
-
-async def create_stock_screener(ctx, symbol, bot=None):
-    """Create a stock screener message for the new stock"""
-    # Get stock channel
-    if bot is None:
-        # This is a fallback, but we should pass bot from process_command
-        from main import create_bot
-        bot = create_bot()
-        await bot.login(config.TOKEN)
-    
-    channel = bot.get_channel(config.STOCK_CHANNEL_ID)
-    if not channel:
-        logger.error(f"Failed to create stock screener for {symbol}: Stock channel not found")
-        return
-    
-    # Create and send chart
-    view = ChartView(symbol)
-    file, embed = await view.get_embed()
-    
-    try:
-        message = await channel.send(embed=embed, file=file, view=view)
-        StockManager.stock_messages[symbol] = message.id
-        view.message = message
-        logger.info(f"Created stock screener for {symbol}")
-        
-        # Save message IDs
-        StockManager.save_stock_messages()
-    except Exception as e:
-        logger.error(f"Error creating stock screener for {symbol}: {e}")
 
 def about(ctx):
     """Display information about the bot"""

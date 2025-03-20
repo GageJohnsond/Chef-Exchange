@@ -40,20 +40,25 @@ class ChartView(View):
             emoji = "📈" if pct_change >= 0 else "📉"
             change_str = f" {emoji} {pct_change:.1f}%"
         
+        # Market condition indicator - add crash warning
+        market_indicator = ""
+        if StockManager.market_condition == "crash":
+            market_indicator = "🔥 CRASH! "
+        
         # Determine color based on price (highlight danger when close to bankruptcy)
         if price <= 10:
             if price <= 5:
                 # Critical range
                 color = config.COLOR_ERROR
-                title_prefix = "⚠️ CRITICAL - "
+                title_prefix = f"⚠️ CRITICAL - {market_indicator}"
             else:
                 # Warning range
                 color = discord.Color.orange()
-                title_prefix = "⚠️ WARNING - "
+                title_prefix = f"⚠️ WARNING - {market_indicator}"
         else:
             # Normal range
             color = config.COLOR_INFO
-            title_prefix = ""
+            title_prefix = market_indicator
         
         # Create embed with market condition info
         embed = discord.Embed(
@@ -68,6 +73,14 @@ class ChartView(View):
                 name="Bankruptcy Risk",
                 value=(f"This stock is at risk of bankruptcy. If the price reaches $0 or below, "
                     f"the stock will be **delisted** and all shares will be **permanently lost**."),
+                inline=False
+            )
+        
+        # Add market crash warning if applicable
+        if StockManager.market_condition == "crash":
+            embed.add_field(
+                name="🔥 MARKET CRASH WARNING",
+                value="The market is currently experiencing a severe crash. All stocks are facing strong downward pressure.",
                 inline=False
             )
         

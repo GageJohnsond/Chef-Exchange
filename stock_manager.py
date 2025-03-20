@@ -242,9 +242,15 @@ class StockManager:
             },
             {
                 "name": "stable", 
-                "weight": 0.4,
+                "weight": 0.35,  
                 "min_change": random.uniform(-3, -1),
                 "max_change": random.uniform(1, 3),
+            },
+            {
+                "name": "crash", 
+                "weight": 0.05,  
+                "min_change": random.uniform(-15, -8),
+                "max_change": random.uniform(-8, -3),
             }
         ]
         
@@ -261,9 +267,13 @@ class StockManager:
         # Save the changes
         cls.save_stocks()
         
-        logger.info(f"Market condition changed to {cls.market_condition}: " 
-                    f"min={cls.current_min_change:.2f}, max={cls.current_max_change:.2f}")
-        
+        # Log the market condition change with more prominent message for crash
+        if cls.market_condition == "crash":
+            logger.warning(f"🔴 MARKET CRASH DETECTED! Market condition changed to {cls.market_condition}: " 
+                        f"min={cls.current_min_change:.2f}, max={cls.current_max_change:.2f}")
+        else:
+            logger.info(f"Market condition changed to {cls.market_condition}: " 
+                        f"min={cls.current_min_change:.2f}, max={cls.current_max_change:.2f}")
     @classmethod
     async def update_prices(cls) -> None:
         """
@@ -311,9 +321,9 @@ class StockManager:
                 cls.stock_prices[symbol] = new_price
                 cls.price_history[symbol].append(new_price)
                 
-                # Keep history at last 125 updates for active stocks
-                if len(cls.price_history[symbol]) > 125:
-                    cls.price_history[symbol] = cls.price_history[symbol][-125:]
+                # Keep history at last 175 updates for active stocks
+                if len(cls.price_history[symbol]) > 175:
+                    cls.price_history[symbol] = cls.price_history[symbol][-175:]
         
         # Handle bankrupt stocks
         for symbol in bankrupt_stocks:

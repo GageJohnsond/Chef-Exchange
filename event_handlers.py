@@ -154,8 +154,16 @@ class EventHandlers:
         """Periodically update stock prices and edit existing messages"""
         logger.info("📊 Updating stock prices...")
         
-        # Update stock prices - but ignore the market condition message
+        # Check the previous market condition
+        previous_condition = StockManager.market_condition
+        
+        # Update stock prices
         bankruptcy_announcements = await StockManager.update_prices()
+        
+        # Check if the market condition has changed to crash
+        if previous_condition != "crash" and StockManager.market_condition == "crash":
+            # Send crash announcement
+            await self.announce_market_crash()
         
         # Handle bankruptcy announcements if any
         if bankruptcy_announcements:
@@ -242,6 +250,47 @@ class EventHandlers:
             except Exception as e:
                 logger.error(f"Error sending bankruptcy announcement for {symbol}: {e}")
     
+    async def announce_market_crash(self):
+        """Send an announcement about a market crash"""
+        channel = self.bot.get_channel(config.TERMINAL_CHANNEL_ID)
+        if not channel:
+            logger.warning("⚠️ Terminal channel not found for crash announcement.")
+            return
+        
+        # Create crash announcement embed
+        embed = discord.Embed(
+            title="🔥 MARKET CRASH DETECTED! 📉",
+            description="**EMERGENCY ALERT:** The market has entered a severe downturn!",
+            color=config.COLOR_ERROR
+        )
+        
+        embed.add_field(
+            name="What This Means",
+            value="All stocks are experiencing significant negative pressure. Stock prices are likely to fall sharply.",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="Risk Level",
+            value="⚠️⚠️⚠️ HIGH - Multiple bankruptcies possible",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="Investor Advice",
+            value="This may be a good time to buy stocks at discount prices if you're brave, or to hold onto cash if you're cautious.",
+            inline=False
+        )
+        
+        embed.set_footer(text="The CH3F Exchange | Market conditions update every 9 hours")
+        
+        # Send the announcement
+        try:
+            await channel.send("@everyone", embed=embed)
+            logger.info("Sent market crash announcement")
+        except Exception as e:
+            logger.error(f"Error sending market crash announcement: {e}")
+        
     async def post_all_stock_charts(self):
         """Post all stock charts in the stock channel"""
         await self.bot.wait_until_ready()

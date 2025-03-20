@@ -40,12 +40,36 @@ class ChartView(View):
             emoji = "📈" if pct_change >= 0 else "📉"
             change_str = f" {emoji} {pct_change:.1f}%"
         
+        # Determine color based on price (highlight danger when close to bankruptcy)
+        if price <= 10:
+            if price <= 5:
+                # Critical range
+                color = config.COLOR_ERROR
+                title_prefix = "⚠️ CRITICAL - "
+            else:
+                # Warning range
+                color = discord.Color.orange()
+                title_prefix = "⚠️ WARNING - "
+        else:
+            # Normal range
+            color = config.COLOR_INFO
+            title_prefix = ""
+        
         # Create embed with market condition info
         embed = discord.Embed(
-            title=f"{self.symbol} | Price - ${price:.2f} CCD{change_str}",
-            color=config.COLOR_INFO
+            title=f"{title_prefix}{self.symbol} | Price - ${price:.2f} CCD{change_str}",
+            color=color
         )
         embed.set_image(url="attachment://chart.png")
+        
+        # Add bankruptcy warning for stocks with low prices
+        if price <= 10:
+            embed.add_field(
+                name="Bankruptcy Risk",
+                value=(f"This stock is at risk of bankruptcy. If the price reaches $0 or below, "
+                    f"the stock will be **delisted** and all shares will be **permanently lost**."),
+                inline=False
+            )
         
         if len(price_history) > 1:
             # Add price info and market info to footer
@@ -110,9 +134,12 @@ class ChartView(View):
             )
             return
         
-        # Get selling price and update stock - now includes same_day_sale flag
+        # Get selling price and update stock - now includes bankruptcy_triggered flag
         base_price = StockManager.stock_prices[self.symbol]
-        final_price, same_day_sale = StockManager.sell_stock(self.symbol, user_id)
+        # Pass the bot instance to handle bankruptcy if needed
+        final_price, same_day_sale, bankruptcy_triggered = await StockManager.sell_stock(
+            self.symbol, user_id, interaction.client
+        )
         
         # Process sale
         UserManager.update_balance(user_id, final_price)
@@ -126,8 +153,15 @@ class ChartView(View):
         else:
             message = f"💰 {interaction.user.mention} sold a share of {self.symbol} for ${final_price:.2f} CCD."
         
+        # Add bankruptcy notice if triggered
+        if bankruptcy_triggered:
+            message += f"\n\n⚠️ **BANKRUPTCY ALERT**: Your sale has caused {self.symbol} to go bankrupt! The stock has been delisted from the exchange."
+        
         await interaction.response.send_message(message, ephemeral=True)
-        await self.update_chart()
+        
+        # Only update chart if bankruptcy wasn't triggered (otherwise the chart will be deleted)
+        if not bankruptcy_triggered:
+            await self.update_chart()
     
     @discord.ui.button(label="Buy", style=discord.ButtonStyle.primary)
     async def buy_btn(self, interaction: discord.Interaction, button: Button):
@@ -136,7 +170,6 @@ class ChartView(View):
     @discord.ui.button(label="Sell", style=discord.ButtonStyle.danger)
     async def sell_btn(self, interaction: discord.Interaction, button: Button):
         await self.sell_stock(interaction)
-
 
 class BalanceLeaderboardView(View):
     """View for the balance leaderboard"""
@@ -227,8 +260,16 @@ class StockLeaderboardView(View):
     
     def get_embed(self):
         """Generate the stock leaderboard embed"""
+        # Get all symbols and their prices from StockManager
+        all_symbols = StockManager.get_all_symbols()
+        stock_prices = {}
+        
+        for symbol in all_symbols:
+            if symbol in StockManager.stock_prices:
+                stock_prices[symbol] = StockManager.stock_prices[symbol]
+        
         # Sort stocks by price (highest first)
-        sorted_stocks = sorted(StockManager.stock_prices.items(), key=lambda x: x[1], reverse=True)
+        sorted_stocks = sorted(stock_prices.items(), key=lambda x: x[1], reverse=True)
         
         # Create description
         desc = ""
@@ -241,6 +282,9 @@ class StockLeaderboardView(View):
                 change = f" {emoji} {pct_change:.1f}%"
             
             desc += f"{i+1}. {symbol}: **${price:.2f} CCD**{change}\n"
+        
+        if not desc:
+            desc = "No active stocks found."
         
         # Create embed
         embed = discord.Embed(
@@ -291,8 +335,8 @@ class HelpView(View):
         embed.add_field(
             name="📈 Stock Market Commands",
             value=(
-                "`!mystocks` or `!portfolio` - View your stock portfolio\n"
-                "`!stock <symbol>` - Check a specific stock"
+                "`!portfolio` or `!port` - View your stock portfolio\n"
+                f"`!createstock <symbol>` or `!ipo <symbol>` - Create your own stock (costs ${config.IPO_COST} CCD)"
             ),
             inline=False
         )

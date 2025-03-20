@@ -6,6 +6,7 @@ import random
 import logging
 from datetime import datetime, timezone
 import pytz
+import asyncio
 
 import discord
 from discord.ext import commands
@@ -167,6 +168,98 @@ async def stock_command(ctx, symbol, bot):
     view.message = message
     return None
 
+async def create_stock(ctx, symbol, bot=None):
+    """Create a new stock (IPO) for a user"""
+    # Validate input
+    if not symbol:
+        return "⚠️ Please provide a valid stock symbol. Example: !createstock XYZ"
+    
+    # Format symbol properly
+    symbol = symbol.upper()
+    if not symbol.startswith('$'):
+        symbol = f"${symbol}"
+    
+    # Validate symbol format - alphanumeric, 2-4 characters (not including $)
+    import re
+    if not re.match(r'^\$[A-Z0-9]{2,4}$', symbol):
+        return "⚠️ Stock symbol must be 2-4 alphanumeric characters. Example: $XYZ"
+    
+    # Check if user already has a stock
+    user_id = str(ctx.author.id)
+    
+    # Use StockManager to check if user already has a stock
+    user_stock = StockManager.get_user_stock(user_id)
+    if user_stock:
+        return f"⚠️ You already have a stock: {user_stock}"
+    
+    # Check if symbol already exists
+    if symbol in StockManager.get_all_symbols():
+        return f"⚠️ Stock symbol {symbol} already exists. Please choose another."
+        
+    # Check if user has enough funds
+    DataManager.ensure_user(ctx.author.id)
+    bal = UserManager.get_balance(ctx.author.id)
+        
+    if bal < config.IPO_COST:
+        return f"❌ Insufficient funds. Creating a stock costs ${config.IPO_COST} CCD. You have ${bal:.2f} CCD."
+        
+    # Charge the user
+    UserManager.update_balance(ctx.author.id, -config.IPO_COST)
+    
+    # Add stock to the system via StockManager
+    success = await StockManager.add_stock(symbol, user_id)
+    
+    if not success:
+        # Refund the user if there was an error
+        UserManager.update_balance(ctx.author.id, config.IPO_COST)
+        return "❌ There was an error creating your stock. Please try again."
+    
+    # Create stock screener message
+    asyncio.create_task(create_stock_screener(ctx, symbol, bot))
+    
+    # Create success message
+    embed = discord.Embed(
+        title="🚀 Stock Created Successfully!",
+        description=f"Congratulations {ctx.author.mention}! You've successfully created **{symbol}** stock.\nStarting price: **${StockManager.stock_prices[symbol]:.2f} CCD**",
+        color=config.COLOR_SUCCESS
+    )
+    
+    embed.add_field(
+        name="Next Steps",
+        value="Your stock will now appear in the stock channel and participate in market updates."
+    )
+    
+    return embed
+
+async def create_stock_screener(ctx, symbol, bot=None):
+    """Create a stock screener message for the new stock"""
+    # Get stock channel
+    if bot is None:
+        # This is a fallback, but we should pass bot from process_command
+        from main import create_bot
+        bot = create_bot()
+        await bot.login(config.TOKEN)
+    
+    channel = bot.get_channel(config.STOCK_CHANNEL_ID)
+    if not channel:
+        logger.error(f"Failed to create stock screener for {symbol}: Stock channel not found")
+        return
+    
+    # Create and send chart
+    view = ChartView(symbol)
+    file, embed = await view.get_embed()
+    
+    try:
+        message = await channel.send(embed=embed, file=file, view=view)
+        StockManager.stock_messages[symbol] = message.id
+        view.message = message
+        logger.info(f"Created stock screener for {symbol}")
+        
+        # Save message IDs
+        StockManager.save_stock_messages()
+    except Exception as e:
+        logger.error(f"Error creating stock screener for {symbol}: {e}")
+
 def about(ctx):
     """Display information about the bot"""
     embed = discord.Embed(
@@ -177,7 +270,7 @@ def about(ctx):
     
     embed.add_field(
         name="Creator",
-        value="Created by Gage"
+        value="Created by Gage Johnson."
     )
     
     embed.add_field(
@@ -244,14 +337,13 @@ async def process_command(bot, message):
         elif command in ['stocks', 'stockmarket']:
             return stocks(ctx, bot)
         
-        elif command in ['mystocks', 'portfolio']:
+        elif command in ['mystocks', 'portfolio', 'port']:
             return mystocks(ctx)
         
-        elif command == 'stock':
+        elif command in ['createstock', 'ipo']:
             if len(args) < 1:
-                return "Please specify a stock symbol. Example: !stock SHNE"
-            await stock_command(ctx, args[0], bot)
-            return None  # This command handles its own response
+                return "Please specify a stock symbol. Example: !createstock XYZ"
+            return await create_stock(ctx, args[0], bot)
         
         elif command == 'about':
             return about(ctx)
@@ -268,5 +360,4 @@ async def process_command(bot, message):
 def setup(bot):
     """Setup commands"""
     logger.info("Setting up command processor")
-    # No cogs needed anymore - we're using a custom command processor
     return True

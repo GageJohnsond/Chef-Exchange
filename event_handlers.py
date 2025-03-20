@@ -41,6 +41,9 @@ class EventHandlers:
         LeaderboardManager.initialize(self.bot)
         asyncio.create_task(LeaderboardManager.setup_leaderboards())
         
+        # Run emergency bankruptcy check on startup to catch any problematic stocks
+        await StockManager.handle_emergency_bankruptcies(self.bot)
+        
         # Start stock price update loop if not already running
         if self.stock_update_task is None or not self.stock_update_task.is_running():
             self.stock_update_task = self.update_stock_prices
@@ -152,7 +155,11 @@ class EventHandlers:
         logger.info("📊 Updating stock prices...")
         
         # Update stock prices - but ignore the market condition message
-        StockManager.update_prices()
+        bankruptcy_announcements = await StockManager.update_prices()
+        
+        # Handle bankruptcy announcements if any
+        if bankruptcy_announcements:
+            await self.handle_bankruptcy_announcements(bankruptcy_announcements)
         
         # Edit stock messages
         channel = self.bot.get_channel(config.STOCK_CHANNEL_ID)
@@ -187,6 +194,53 @@ class EventHandlers:
         # Save the updated message IDs
         StockManager.save_stock_messages()
         logger.info("Stock update complete.")
+
+    async def handle_bankruptcy_announcements(self, bankruptcy_announcements):
+        """Send announcements for stocks that went bankrupt"""
+        if not bankruptcy_announcements:
+            return
+        
+        # Get terminal channel for announcements
+        channel = self.bot.get_channel(config.TERMINAL_CHANNEL_ID)
+        if not channel:
+            logger.warning("⚠️ Terminal channel not found for bankruptcy announcements.")
+            return
+        
+        for symbol, affected_users in bankruptcy_announcements.items():
+            # Create announcement embed
+            embed = discord.Embed(
+                title=f"📉 Stock Bankruptcy: {symbol}",
+                description=f"**{symbol}** has gone bankrupt and has been delisted from the exchange!",
+                color=config.COLOR_ERROR
+            )
+            
+            # Add information about affected users
+            if affected_users:
+                user_list = []
+                for user_id, shares in affected_users:
+                    try:
+                        user = await self.bot.fetch_user(int(user_id))
+                        user_list.append(f"{user.mention}: Lost {shares} shares")
+                    except:
+                        user_list.append(f"User {user_id}: Lost {shares} shares")
+                
+                if user_list:
+                    embed.add_field(
+                        name="Affected Investors",
+                        value="\n".join(user_list[:10]) + 
+                            (f"\n... and {len(user_list) - 10} more" if len(user_list) > 10 else ""),
+                        inline=False
+                    )
+            
+            # Add footer
+            embed.set_footer(text="All shares have been removed and the stock has been delisted.")
+            
+            # Send announcement
+            try:
+                await channel.send(embed=embed)
+                logger.info(f"Sent bankruptcy announcement for {symbol}")
+            except Exception as e:
+                logger.error(f"Error sending bankruptcy announcement for {symbol}: {e}")
     
     async def post_all_stock_charts(self):
         """Post all stock charts in the stock channel"""
@@ -199,7 +253,8 @@ class EventHandlers:
         
         logger.info("Posting stock charts...")
         
-        for symbol in config.STOCK_SYMBOLS:
+        # Use StockManager.get_all_symbols() instead of config.STOCK_SYMBOLS
+        for symbol in StockManager.get_all_symbols():
             # Skip if message already exists and is valid
             if symbol in StockManager.stock_messages:
                 try:
@@ -239,7 +294,8 @@ class EventHandlers:
         
         logger.info("Posting missing stock charts...")
         
-        for symbol in config.STOCK_SYMBOLS:
+        # Use StockManager.get_all_symbols() instead of config.STOCK_SYMBOLS
+        for symbol in StockManager.get_all_symbols():
             # Skip if message already exists
             if symbol in StockManager.stock_messages:
                 continue

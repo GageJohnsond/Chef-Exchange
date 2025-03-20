@@ -15,6 +15,7 @@ TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 ACTIVE_CHANNEL_IDS = [707325634887548950, 1346629041066741843, 996963554039173131, 1342937283611070556]
 STOCK_CHANNEL_ID = 1347399173221257227
 LEADERBOARD_CHANNEL_ID = 1347399218175676536
+TERMINAL_CHANNEL_ID = 1346629041066741843
 
 # Economy settings
 DAILY_CAP = 60
@@ -34,9 +35,11 @@ REACTION_REWARD_REACTOR_MAX = 2
 USER_DATA_FILE = "user_data.json"
 STOCKS_FILE = "stocks.json"
 STOCK_MESSAGES_FILE = "stocks_messages.json"
+LEADERBOARD_MESSAGES_FILE = "leaderboard_messages.json"
 LOGO_FILE = "logo.png"
 
 # Stock configuration
+IPO_COST = 1000
 STOCK_SYMBOLS = [
     "$SHNE", "$KORD", "$SPLY", "$KID", "$DREW", "$TRAX", "$DAR", 
     "$TOST", "$TAL", "$GAGE", "$SEVK", "$NINJ", "$YOLO", 
@@ -83,8 +86,8 @@ COMMANDS = {
         ("!gift <@user> <amount>", "Gift $CCD to another user")
     ],
     "Stocks": [
-        ("!mystocks or !portfolio", "View your stock portfolio"),
-        ("!stock <symbol>", "Check a stock price and chart")
+        ("!portfolio or !port", "View your stock portfolio"),
+        ("!createstock or !ipo <symbol>", "Create your own stock (costs $1000 CCD)")
     ],
     "Info": [
         ("!about", "About this bot"),

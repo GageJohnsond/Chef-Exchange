@@ -1,5 +1,5 @@
 """
-User management module for CH3F Exchange Discord Bot
+User management module for Stock Exchange Discord Bot
 Handles user data, balances, and inventory
 """
 import logging
@@ -8,7 +8,7 @@ from typing import Dict, Union
 import config
 from data_manager import DataManager
 
-logger = logging.getLogger('ch3f_exchange.user')
+logger = logging.getLogger('stock_exchange.user')
 
 class UserManager:
     """Class to handle user-related operations"""

@@ -66,7 +66,7 @@ class LeaderboardManager:
         
         try:
             with open(cls.LEADERBOARD_FILE, "w") as f:
-                json.dump(data, f, indent=4)
+                json.dump(data, f, indent=0)
             logger.info("Saved leaderboard message IDs")
         except Exception as e:
             logger.error(f"Error saving leaderboard message IDs: {e}")

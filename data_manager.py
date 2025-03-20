@@ -17,10 +17,29 @@ class DataManager:
     @staticmethod
     def ensure_files_exist() -> None:
         """Ensure all required data files exist"""
+        # Check for user data file
         if not os.path.exists(config.USER_DATA_FILE):
             with open(config.USER_DATA_FILE, "w") as f:
                 json.dump({}, f)
             logger.info(f"Created empty {config.USER_DATA_FILE}")
+            
+        # Check for stocks data file
+        if not os.path.exists(config.STOCKS_FILE):
+            with open(config.STOCKS_FILE, "w") as f:
+                json.dump({
+                    "STOCK_PRICES": {},
+                    "PRICE_HISTORY": {},
+                    "STOCK_SYMBOLS": list(config.STOCK_SYMBOLS),
+                    "USER_TO_TICKER": dict(config.USER_TO_TICKER)
+                }, f)
+            logger.info(f"Created empty {config.STOCKS_FILE} with initial data")
+            
+        # Check for stock messages file
+        if not os.path.exists(config.STOCK_MESSAGES_FILE):
+            with open(config.STOCK_MESSAGES_FILE, "w") as f:
+                json.dump({}, f)
+            logger.info(f"Created empty {config.STOCK_MESSAGES_FILE}")
+
     
     @staticmethod
     def load_data(filename: str) -> Dict:
@@ -37,7 +56,7 @@ class DataManager:
         """Save data to a JSON file"""
         try:
             with open(filename, "w") as f:
-                json.dump(data, f, indent=4)
+                json.dump(data, f, indent=0)
             logger.debug(f"Data saved to {filename}")
         except Exception as e:
             logger.error(f"Error saving to {filename}: {e}")

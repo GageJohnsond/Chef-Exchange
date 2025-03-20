@@ -290,6 +290,304 @@ def help(ctx):
     view = HelpView()
     return view.get_embed()
 
+async def admin_add(ctx, target, amount, bot=None):
+    """Admin command to add value to a stock"""
+    # Security check - only allow specific admin users
+    if ctx.author.id not in config.ADMIN_USER_IDS:
+        return "❌ You don't have permission to use admin commands."
+
+    # Parse amount
+    try:
+        amount_value = float(amount)
+        if amount_value <= 0:
+            return "⚠️ Please provide a positive number for the amount."
+    except ValueError:
+        return "⚠️ Invalid amount. Please enter a valid number."
+
+    # Determine target stock symbol
+    symbol = None
+    
+    # If target starts with @, it's a user mention
+    if target.startswith('<@') and target.endswith('>'):
+        # Extract user ID from mention
+        user_id = target.strip('<@!>')
+        
+        # Check if the user has an associated stock
+        if user_id.isdigit():
+            user_id = str(user_id)
+            symbol = StockManager.get_user_stock(user_id)
+            if not symbol:
+                return f"⚠️ No stock found for user {target}."
+    else:
+        # Check if it's a ticker symbol
+        target_symbol = target.upper()
+        if not target_symbol.startswith('$'):
+            target_symbol = f"${target_symbol}"
+        
+        # Check if the symbol exists
+        if target_symbol in StockManager.get_all_symbols():
+            symbol = target_symbol
+        else:
+            return f"⚠️ Stock symbol {target_symbol} not found."
+    
+    # Update the stock price
+    current_price = StockManager.stock_prices[symbol]
+    new_price = current_price + amount_value
+    
+    # Ensure price doesn't go below 0
+    if new_price <= 0:
+        return f"⚠️ Cannot adjust price below $0. Current price is ${current_price:.2f}"
+    
+    # Update the price
+    StockManager.stock_prices[symbol] = round(new_price, 2)
+    
+    # Add to price history
+    StockManager.price_history[symbol].append(round(new_price, 2))
+    
+    # Save changes
+    StockManager.save_stocks()
+    
+    # Create a response embed
+    embed = discord.Embed(
+        title="🔧 Admin: Stock Price Adjusted",
+        description=f"Added **${amount_value:.2f}** to **{symbol}**",
+        color=config.COLOR_WARNING
+    )
+    
+    embed.add_field(
+        name="Previous Price",
+        value=f"${current_price:.2f}",
+        inline=True
+    )
+    
+    embed.add_field(
+        name="New Price",
+        value=f"${new_price:.2f}",
+        inline=True
+    )
+    
+    embed.add_field(
+        name="Change",
+        value=f"+${amount_value:.2f} (+{(amount_value/current_price)*100:.1f}%)",
+        inline=True
+    )
+    
+    # Try to update the stock's message if it exists
+    if bot:
+        channel = bot.get_channel(config.STOCK_CHANNEL_ID)
+        if channel and symbol in StockManager.stock_messages:
+            try:
+                message_id = StockManager.stock_messages[symbol]
+                message = await channel.fetch_message(message_id)
+                
+                # Create a new chart view
+                view = ChartView(symbol)
+                view.message = message
+                await view.update_chart()
+                logger.info(f"Updated chart for {symbol} after admin price adjustment")
+            except Exception as e:
+                logger.error(f"Error updating chart for {symbol}: {e}")
+    
+    return embed
+
+
+async def admin_sub(ctx, target, amount, bot=None):
+    """Admin command to subtract value from a stock"""
+    # Security check - only allow specific admin users
+    if ctx.author.id not in config.ADMIN_USER_IDS:
+        return "❌ You don't have permission to use admin commands."
+
+    # Parse amount
+    try:
+        amount_value = float(amount)
+        if amount_value <= 0:
+            return "⚠️ Please provide a positive number for the amount."
+    except ValueError:
+        return "⚠️ Invalid amount. Please enter a valid number."
+
+    # Determine target stock symbol
+    symbol = None
+    
+    # If target starts with @, it's a user mention
+    if target.startswith('<@') and target.endswith('>'):
+        # Extract user ID from mention
+        user_id = target.strip('<@!>')
+        
+        # Check if the user has an associated stock
+        if user_id.isdigit():
+            user_id = str(user_id)
+            symbol = StockManager.get_user_stock(user_id)
+            if not symbol:
+                return f"⚠️ No stock found for user {target}."
+    else:
+        # Check if it's a ticker symbol
+        target_symbol = target.upper()
+        if not target_symbol.startswith('$'):
+            target_symbol = f"${target_symbol}"
+        
+        # Check if the symbol exists
+        if target_symbol in StockManager.get_all_symbols():
+            symbol = target_symbol
+        else:
+            return f"⚠️ Stock symbol {target_symbol} not found."
+    
+    # Update the stock price
+    current_price = StockManager.stock_prices[symbol]
+    new_price = current_price - amount_value
+    
+    # Check if this would cause bankruptcy
+    if new_price <= 0:
+        return (f"⚠️ This adjustment would cause {symbol} to go bankrupt (price would be ${new_price:.2f}). "
+                f"If you want to bankrupt this stock, use the `!admin_bankrupt` command instead.")
+    
+    # Update the price
+    StockManager.stock_prices[symbol] = round(new_price, 2)
+    
+    # Add to price history
+    StockManager.price_history[symbol].append(round(new_price, 2))
+    
+    # Save changes
+    StockManager.save_stocks()
+    
+    # Create a response embed
+    embed = discord.Embed(
+        title="🔧 Admin: Stock Price Adjusted",
+        description=f"Subtracted **${amount_value:.2f}** from **{symbol}**",
+        color=config.COLOR_WARNING
+    )
+    
+    embed.add_field(
+        name="Previous Price",
+        value=f"${current_price:.2f}",
+        inline=True
+    )
+    
+    embed.add_field(
+        name="New Price",
+        value=f"${new_price:.2f}",
+        inline=True
+    )
+    
+    embed.add_field(
+        name="Change",
+        value=f"-${amount_value:.2f} (-{(amount_value/current_price)*100:.1f}%)",
+        inline=True
+    )
+    
+    # Try to update the stock's message if it exists
+    if bot:
+        channel = bot.get_channel(config.STOCK_CHANNEL_ID)
+        if channel and symbol in StockManager.stock_messages:
+            try:
+                message_id = StockManager.stock_messages[symbol]
+                message = await channel.fetch_message(message_id)
+                
+                # Create a new chart view
+                view = ChartView(symbol)
+                view.message = message
+                await view.update_chart()
+                logger.info(f"Updated chart for {symbol} after admin price adjustment")
+            except Exception as e:
+                logger.error(f"Error updating chart for {symbol}: {e}")
+    
+    return embed
+
+async def admin_bankrupt(ctx, target, bot=None):
+    """Admin command to force a stock bankruptcy"""
+    # Security check - only allow specific admin users
+    if ctx.author.id not in config.ADMIN_USER_IDS:
+        return "❌ You don't have permission to use admin commands."
+
+    # Determine target stock symbol
+    symbol = None
+    
+    # If target starts with @, it's a user mention
+    if target.startswith('<@') and target.endswith('>'):
+        # Extract user ID from mention
+        user_id = target.strip('<@!>')
+        
+        # Check if the user has an associated stock
+        if user_id.isdigit():
+            user_id = str(user_id)
+            symbol = StockManager.get_user_stock(user_id)
+            if not symbol:
+                return f"⚠️ No stock found for user {target}."
+    else:
+        # Check if it's a ticker symbol
+        target_symbol = target.upper()
+        if not target_symbol.startswith('$'):
+            target_symbol = f"${target_symbol}"
+        
+        # Check if the symbol exists
+        if target_symbol in StockManager.get_all_symbols():
+            symbol = target_symbol
+        else:
+            return f"⚠️ Stock symbol {target_symbol} not found."
+    
+    # Create confirmation message
+    embed = discord.Embed(
+        title="⚠️ BANKRUPTCY CONFIRMATION",
+        description=f"Are you sure you want to force **{symbol}** into bankruptcy?\n\nThis will:\n- Remove the stock from the exchange\n- Delete all shares from user inventories\n- This action cannot be undone",
+        color=config.COLOR_ERROR
+    )
+    
+    # Create confirm/cancel buttons
+    class BankruptConfirmView(discord.ui.View):
+        def __init__(self, symbol, bot, original_user):
+            super().__init__(timeout=60)
+            self.symbol = symbol
+            self.bot = bot
+            self.original_user = original_user
+        
+        @discord.ui.button(label="Confirm Bankruptcy", style=discord.ButtonStyle.danger)
+        async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+            # Check that only the original user can confirm
+            if interaction.user.id != self.original_user.id:
+                await interaction.response.send_message("Only the user who initiated this command can confirm it.", ephemeral=True)
+                return
+            
+            # Set price to 0 to trigger bankruptcy
+            StockManager.stock_prices[self.symbol] = 0
+            
+            # Process the bankruptcy
+            announcement_data = await StockManager.handle_bankruptcy(self.symbol, bot)
+            
+            # Create response
+            response_embed = discord.Embed(
+                title="💥 BANKRUPTCY EXECUTED",
+                description=f"**{self.symbol}** has been forced into bankruptcy and removed from the exchange.",
+                color=config.COLOR_ERROR
+            )
+            
+            # Add info about affected users
+            if announcement_data:
+                affected_count = len(announcement_data)
+                response_embed.add_field(
+                    name="Affected Users",
+                    value=f"{affected_count} users lost their shares of {self.symbol}.",
+                    inline=False
+                )
+            
+            await interaction.response.edit_message(embed=response_embed, view=None)
+        
+        @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
+        async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+            await interaction.response.edit_message(
+                embed=discord.Embed(
+                    title="Action Cancelled",
+                    description="Bankruptcy process has been cancelled.",
+                    color=config.COLOR_INFO
+                ),
+                view=None
+            )
+    
+    # Send the confirmation message with buttons
+    view = BankruptConfirmView(symbol, bot, ctx.author)
+    message = await ctx.channel.send(embed=embed, view=view)
+    
+    # Return None because we've already sent our own message
+    return None
+
 async def process_command(bot, message):
     """Process commands from messages"""
     if message.author.bot:
@@ -350,6 +648,22 @@ async def process_command(bot, message):
         
         elif command == 'help':
             return help(ctx)
+        
+        # Admin commands
+        elif command == 'admin_add':
+            if len(args) < 2:
+                return "Usage: !admin_add <@user or ticker> <amount>"
+            return await admin_add(ctx, args[0], args[1], bot)
+        
+        elif command == 'admin_sub':
+            if len(args) < 2:
+                return "Usage: !admin_sub <@user or ticker> <amount>"
+            return await admin_sub(ctx, args[0], args[1], bot)
+        
+        elif command == 'admin_bankrupt':
+            if len(args) < 1:
+                return "Usage: !admin_bankrupt <@user or ticker>"
+            return await admin_bankrupt(ctx, args[0], bot)
         
     except Exception as e:
         logger.error(f"Error processing command {command}: {e}", exc_info=True)

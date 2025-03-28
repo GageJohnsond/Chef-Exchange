@@ -45,40 +45,20 @@ class ChartView(View):
         if StockManager.market_condition == "crash":
             market_indicator = "🔥 CRASH! "
         
-        # Check for decay risk
-        decay_warning = ""
-        decay_field = None
-        
-        # Only import and check decay if we have more stocks than threshold
-        if len(StockManager.get_all_symbols()) > config.STOCK_DECAY_THRESHOLD:
-            from decay import DecayManager
-            risk_stocks = DecayManager.get_decay_risk_stocks()
-            
-            # Find if this stock is at risk
-            for symbol, risk in risk_stocks:
-                if symbol == self.symbol:
-                    if risk >= 90:
-                        decay_warning = "♨️ DECAYING - "
-                        decay_field = {
-                            "value": ("To prevent further decay, more users need to invest in this stock."),
-                            "inline": False
-                        }
-                    break
-        
         # Determine color based on price (highlight danger when close to bankruptcy)
         if price <= 10:
             if price <= 5:
                 # Critical range
                 color = config.COLOR_ERROR
-                title_prefix = f"⚠️ CRITICAL - {decay_warning}{market_indicator}"
+                title_prefix = f"⚠️ CRITICAL - {market_indicator}"
             else:
                 # Warning range
                 color = discord.Color.orange()
-                title_prefix = f"⚠️ WARNING - {decay_warning}{market_indicator}"
+                title_prefix = f"⚠️ WARNING - {market_indicator}"
         else:
             # Normal range
             color = config.COLOR_INFO
-            title_prefix = f"{decay_warning}{market_indicator}"
+            title_prefix = f"{market_indicator}"
         
         # Create embed with market condition info
         embed = discord.Embed(
@@ -102,13 +82,6 @@ class ChartView(View):
                 name="🔥 MARKET CRASH WARNING",
                 value="The market is currently experiencing a severe crash. All stocks are facing strong downward pressure.",
                 inline=False
-            )
-        
-        # Add decay warning field if applicable
-        if decay_field:
-            embed.add_field(
-                value=decay_field["value"],
-                inline=decay_field["inline"]
             )
         
         if len(price_history) > 1:

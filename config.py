@@ -1,5 +1,5 @@
 """
-Configuration file for the CH3F Exchange Discord Bot
+Configuration file for the Stock Exchange Discord Bot
 Contains all constant values, settings, and configurations
 """
 import os
@@ -11,6 +11,9 @@ load_dotenv()
 # Bot token from environment variables
 TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 
+#Exchange Name
+NAME = "CH3F" #Name of the Exchange eg: The <NAME> Exchange
+
 #Admin User ID's
 ADMIN_USER_IDS = [126535729156194304]
 
@@ -21,10 +24,26 @@ LEADERBOARD_CHANNEL_ID = 1347399218175676536
 TERMINAL_CHANNEL_ID = 1346629041066741843
 
 # Economy settings
+UOM="CCD"
 DAILY_CAP = 60
 DAILY_REWARD_MIN = 15
 DAILY_REWARD_MAX = 100
 SELLING_FEE = 7  # Fee to sell stocks
+REBRAND_FEE = 500 #Fee to rename stock
+
+# Dividend settings
+TOP_SHAREHOLDERS_COUNT = 3  # Number of top shareholders to reward
+CREATOR_DIVIDEND_PERCENT = 2  # Percentage of stock price per shareholder
+TOP_SHAREHOLDER_DIVIDENDS = {
+    0: 15,  # 15% of stock price to top shareholder
+    1: 10,  # 10% of stock price to second place
+    2: 5  # 5% of stock price to third place
+}
+
+# Stock decay settings
+STOCK_DECAY_THRESHOLD = 15  # Maximum number of stocks before decay starts
+STOCK_DECAY_PERCENT = 3.0   # Percentage to reduce price by on each update
+STOCK_BANKRUPTCY_THRESHOLD = 5.0  # Price threshold for bankruptcy warning
 
 # Message rewards
 MESSAGE_REWARD_MIN = 1
@@ -43,23 +62,6 @@ LOGO_FILE = "logo.png"
 
 # Stock configuration
 IPO_COST = 1000
-STOCK_SYMBOLS = [
-    "$SHNE", "$KORD", "$SPLY", "$KID", "$DREW", "$TRAX", "$DAR", 
-    "$TOST", "$TAL", "$GAGE", "$SEVK", "$NINJ", "$YOLO", 
-    "$LOOK", "$WAMR", "$RDGE"
-]
-
-# Mapping of user IDs to their ticker symbols
-USER_TO_TICKER = {
-    "489853259130077185": "$SHNE", "160980489719644161": "$KORD",
-    "226124570233536533": "$SPLY", "289601944346034176": "$KID",
-    "103233630515531776": "$DREW", "284075942014484480": "$TRAX",
-    "709565709696368671": "$DAR", "709565709696368671": "$TOST",
-    "325803101007380483": "$TAL", "126535729156194304": "$GAGE",
-    "388455185468620820": "$SEVK", "1180393064997605436": "$NINJ",
-    "694651316986707988": "$YOLO", "537008849987698688": "$LOOK",
-    "356895872853999621": "$WAMR", "221986056193441792": "$RDGE"
-}
 
 # Update settings
 STOCK_UPDATE_INTERVAL = 45  # minutes
@@ -81,26 +83,10 @@ COLOR_WARNING = 0xFFD700  # Gold
 COLOR_SPECIAL = 0xE91E63  # Pink
 COLOR_DISCORD = 0x7289DA  # Discord Blurple
 
-# Command list for help 
-COMMANDS = {
-    "Economy": [
-        ("!balance or !bal", "Check your $CCD balance"),
-        ("!daily", "Claim daily reward"),
-        ("!gift <@user> <amount>", "Gift $CCD to another user")
-    ],
-    "Stocks": [
-        ("!portfolio or !port", "View your stock portfolio"),
-        ("!createstock or !ipo <symbol>", "Create your own stock (costs $1000 CCD)")
-    ],
-    "Info": [
-        ("!about", "About this bot"),
-        ("!help", "Show this command menu")
-    ]
-}
 
 # Default user data
 DEFAULT_USER_DATA = {
-    "balance": 50,
+    "balance": 1250,
     "inventory": {},
     "last_daily": None,
     "bank": 0,

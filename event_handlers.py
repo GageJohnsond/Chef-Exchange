@@ -1,5 +1,5 @@
 """
-Event handlers module for CH3F Exchange Discord Bot
+Event handlers module for Stock Exchange Discord Bot
 Contains all event listener functions
 """
 import asyncio
@@ -13,12 +13,13 @@ import discord
 from discord.ext import commands, tasks
 
 import config
+from dividends import DividendManager
 from data_manager import DataManager
 from user_manager import UserManager
 from stock_manager import StockManager
 from ui_components import ChartView
 
-logger = logging.getLogger('ch3f_exchange.events')
+logger = logging.getLogger('stock_exchange.events')
 
 class EventHandlers:
     """Class containing all event handler methods"""
@@ -48,7 +49,10 @@ class EventHandlers:
         if self.stock_update_task is None or not self.stock_update_task.is_running():
             self.stock_update_task = self.update_stock_prices
             self.stock_update_task.start()
-        
+
+        #Start dividend payouts
+        self.daily_dividend_distribution.start()
+
         # Post stock charts
         await self.post_all_stock_charts()
     
@@ -203,6 +207,83 @@ class EventHandlers:
         StockManager.save_stock_messages()
         logger.info("Stock update complete.")
 
+    async def process_automatic_dividends(self):
+        """Process dividends for all users regardless of daily claims"""
+        logger.info("Processing automatic dividends for all users...")
+        
+        try:
+            # Get a list of all users who haven't claimed dividends today
+            utc_now = datetime.now(pytz.utc)
+            eastern = pytz.timezone("America/New_York")
+            est_now = utc_now.astimezone(eastern)
+            today = est_now.strftime("%Y-%m-%d")
+            
+            user_data = DataManager.load_data(config.USER_DATA_FILE)
+            users_to_process = []
+            
+            for user_id, data in user_data.items():
+                last_dividend_date = data.get("last_dividend", {}).get("date", None)
+                if last_dividend_date != today:
+                    users_to_process.append(user_id)
+            
+            if not users_to_process:
+                logger.info("No users need dividend processing")
+                return
+            
+            # Process dividends for these users
+            logger.info(f"Processing dividends for {len(users_to_process)} users")
+            dividend_results = DividendManager.process_daily_dividends()
+            
+            # Get terminal channel for announcements
+            channel = self.bot.get_channel(config.TERMINAL_CHANNEL_ID)
+            if not channel:
+                logger.warning("Terminal channel not found for dividend announcements")
+                return
+            
+            # Create summary for announcement
+            total_paid = 0
+            for user_type in dividend_results.values():
+                for amount in user_type.values():
+                    total_paid += amount
+            
+            if total_paid > 0:
+                # Create announcement embed
+                embed = discord.Embed(
+                    title="💰 Daily Dividend Distribution",
+                    description=f"Stock dividends have been distributed to shareholders and stock owners!",
+                    color=config.COLOR_SPECIAL
+                )
+                
+                embed.add_field(
+                    name="Total Dividends Paid",
+                    value=f"**${total_paid:.2f} {config.UOM}**",
+                    inline=False
+                )
+                
+                embed.add_field(
+                    name="Users Receiving Dividends",
+                    value=f"{len(set(list(dividend_results['top_shareholders'].keys()) + list(dividend_results['creators'].keys())))}",
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name="Stocks Paying Owners from Investors",
+                    value=f"{len(StockManager.get_all_symbols())}",
+                    inline=True
+                )
+                
+                embed.set_footer(text="Dividends are paid to top 3 shareholders and stock creators daily")
+                
+                await channel.send(embed=embed)
+                logger.info(f"Dividend announcement sent, total paid: ${total_paid:.2f}")
+        
+        except Exception as e:
+            logger.error(f"Error processing automatic dividends: {e}", exc_info=True)
+
+    @tasks.loop(hours=24)
+    async def daily_dividend_distribution(self):
+        await self.process_automatic_dividends()
+    
     async def handle_bankruptcy_announcements(self, bankruptcy_announcements):
         """Send announcements for stocks that went bankrupt"""
         if not bankruptcy_announcements:
@@ -281,8 +362,6 @@ class EventHandlers:
             value="This may be a good time to buy stocks at discount prices if you're brave, or to hold onto cash if you're cautious.",
             inline=False
         )
-        
-        embed.set_footer(text="The CH3F Exchange | Market conditions update every 9 hours")
         
         # Send the announcement
         try:

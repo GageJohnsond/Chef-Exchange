@@ -1,5 +1,5 @@
 """
-UI components module for CH3F Exchange Discord Bot
+UI components module for Stock Exchange Discord Bot
 Contains all Discord UI components like buttons, views, etc.
 """
 import logging
@@ -12,7 +12,7 @@ import config
 from user_manager import UserManager
 from stock_manager import StockManager
 
-logger = logging.getLogger('ch3f_exchange.ui')
+logger = logging.getLogger('stock_exchange.ui')
 
 class ChartView(View):
     """View for stock charts with buy/sell buttons"""
@@ -45,24 +45,58 @@ class ChartView(View):
         if StockManager.market_condition == "crash":
             market_indicator = "🔥 CRASH! "
         
+        # Check for decay risk
+        decay_warning = ""
+        decay_field = None
+        
+        # Only import and check decay if we have more stocks than threshold
+        if len(StockManager.get_all_symbols()) > config.STOCK_DECAY_THRESHOLD:
+            from decay import DecayManager
+            risk_stocks = DecayManager.get_decay_risk_stocks()
+            
+            # Find if this stock is at risk
+            for symbol, risk in risk_stocks:
+                if symbol == self.symbol:
+                    if risk >= 90:
+                        decay_warning = "♨️ DECAYING! "
+                        decay_field = {
+                            "name": "♨️ STOCK DECAY ACTIVE",
+                            "value": (
+                                f"This stock is losing {config.STOCK_DECAY_PERCENT}% value each update due to low popularity!\n"
+                                "To prevent further decay, more users need to invest in this stock."
+                            ),
+                            "inline": False
+                        }
+                    elif risk >= 50:
+                        decay_warning = "⚠️ DECAY RISK! "
+                        decay_field = {
+                            "name": "⚠️ High Decay Risk",
+                            "value": (
+                                "This stock is at high risk of value decay due to having few shareholders.\n"
+                                "It may start losing value soon unless more users invest in it."
+                            ),
+                            "inline": False
+                        }
+                    break
+        
         # Determine color based on price (highlight danger when close to bankruptcy)
         if price <= 10:
             if price <= 5:
                 # Critical range
                 color = config.COLOR_ERROR
-                title_prefix = f"⚠️ CRITICAL - {market_indicator}"
+                title_prefix = f"⚠️ CRITICAL - {decay_warning}{market_indicator}"
             else:
                 # Warning range
                 color = discord.Color.orange()
-                title_prefix = f"⚠️ WARNING - {market_indicator}"
+                title_prefix = f"⚠️ WARNING - {decay_warning}{market_indicator}"
         else:
             # Normal range
             color = config.COLOR_INFO
-            title_prefix = market_indicator
+            title_prefix = f"{decay_warning}{market_indicator}"
         
         # Create embed with market condition info
         embed = discord.Embed(
-            title=f"{title_prefix}{self.symbol} | Price - ${price:.2f} CCD{change_str}",
+            title=f"{title_prefix}{self.symbol} | Price - ${price:.2f} {config.UOM}{change_str}",
             color=color
         )
         embed.set_image(url="attachment://chart.png")
@@ -82,6 +116,14 @@ class ChartView(View):
                 name="🔥 MARKET CRASH WARNING",
                 value="The market is currently experiencing a severe crash. All stocks are facing strong downward pressure.",
                 inline=False
+            )
+        
+        # Add decay warning field if applicable
+        if decay_field:
+            embed.add_field(
+                name=decay_field["name"],
+                value=decay_field["value"],
+                inline=decay_field["inline"]
             )
         
         if len(price_history) > 1:
@@ -114,7 +156,7 @@ class ChartView(View):
         
         if bal < price:
             await interaction.response.send_message(
-                f"⚠️ {interaction.user.mention}, not enough $CCD to buy {self.symbol}.", 
+                f"⚠️ {interaction.user.mention}, not enough ${config.UOM} to buy {self.symbol}.", 
                 ephemeral=True
             )
             return
@@ -127,8 +169,8 @@ class ChartView(View):
         
         # Add warning about same-day selling fee
         await interaction.response.send_message(
-            f"✅ {interaction.user.mention} bought a share of {self.symbol} for ${price:.2f} CCD.\n"
-            f"⚠️ *Note: Selling this stock today will incur a ${config.SELLING_FEE:.2f} CCD day trading fee.*", 
+            f"✅ {interaction.user.mention} bought a share of {self.symbol} for ${price:.2f} {config.UOM}.\n"
+            f"⚠️ *Note: Selling this stock today will incur a ${config.SELLING_FEE:.2f} {config.UOM} day trading fee.*", 
             ephemeral=True
         )
         await self.update_chart()
@@ -162,9 +204,9 @@ class ChartView(View):
         if same_day_sale:
             fee = base_price - final_price
             message = (f"💰 {interaction.user.mention} sold a share of {self.symbol} for "
-                      f"${final_price:.2f} CCD (day trading fee: ${fee:.2f}).")
+                    f"${final_price:.2f} {config.UOM} (day trading fee: ${fee:.2f}).")
         else:
-            message = f"💰 {interaction.user.mention} sold a share of {self.symbol} for ${final_price:.2f} CCD."
+            message = f"💰 {interaction.user.mention} sold a share of {self.symbol} for ${final_price:.2f} {config.UOM}."
         
         # Add bankruptcy notice if triggered
         if bankruptcy_triggered:
@@ -237,14 +279,14 @@ class BalanceLeaderboardView(View):
             prefix = f"{rank_emoji[i]} " if i < 3 else f"{i+1}. "
             
             # Format with cash + portfolio = total
-            desc += f"{prefix}{name}: **${total:.2f} CCD**\n"
+            desc += f"{prefix}{name}: **${total:.2f} {config.UOM}**\n"
         
         if not desc:
             desc = "No users found in the database."
         
         # Create embed
         embed = discord.Embed(
-            title="🏆 $CCD Total Worth Leaderboard",
+            title=f"🏆 ${config.UOM} Total Worth Leaderboard",
             description=desc,
             color=config.COLOR_WARNING
         )
@@ -294,7 +336,7 @@ class StockLeaderboardView(View):
                 emoji = "📈" if pct_change >= 0 else "📉"
                 change = f" {emoji} {pct_change:.1f}%"
             
-            desc += f"{i+1}. {symbol}: **${price:.2f} CCD**{change}\n"
+            desc += f"{i+1}. {symbol}: **${price:.2f} {config.UOM}**{change}\n"
         
         if not desc:
             desc = "No active stocks found."
@@ -329,7 +371,7 @@ class HelpView(View):
     def get_embed(self):
         """Get the help embed"""
         embed = discord.Embed(
-            title="CH3F Exchange Commands",
+            title=f"{config.NAME} Exchange Commands",
             color=config.COLOR_INFO
         )
         
@@ -337,9 +379,10 @@ class HelpView(View):
         embed.add_field(
             name="💰 Economy Commands",
             value=(
-                "`!balance` or `!bal` - Check your $CCD balance\n"
-                "`!daily` - Claim daily reward\n"
-                "`!gift <@user> <amount>` - Gift $CCD to another user"
+                f"`!balance` or `!bal` - Check your ${config.UOM} balance\n"
+                "`!daily` - Claim daily reward and dividends\n"
+                f"`!gift <@user> <amount>` - Gift ${config.UOM} to another user\n"
+                f"`!dividends` or `!div` - Check your dividend status"
             ),
             inline=False
         )
@@ -349,7 +392,9 @@ class HelpView(View):
             name="📈 Stock Market Commands",
             value=(
                 "`!portfolio` or `!port` - View your stock portfolio\n"
-                f"`!createstock <symbol>` or `!ipo <symbol>` - Create your own stock (costs ${config.IPO_COST} CCD)"
+                f"`!rebrand <symbol>` or `!rename <symbol>` - Rebrand your stock (costs ${config.REBRAND_FEE} {config.UOM})\n"
+                f"`!createstock <symbol>` or `!ipo <symbol>` - Create your own stock (costs ${config.IPO_COST} {config.UOM})\n"
+                "`!decayrisk` or `!stockrisk` - Check which stocks are at risk of decay"
             ),
             inline=False
         )
@@ -369,6 +414,28 @@ class HelpView(View):
         embed.add_field(
             name="📊 Leaderboards",
             value=f"Check out <#{channel_id}> for live leaderboards!",
+            inline=False
+        )
+        
+        # Add dividend info
+        embed.add_field(
+            name="💰 Dividend System",
+            value=(
+                f"• Top {config.TOP_SHAREHOLDERS_COUNT} shareholders in each stock receive daily dividends\n"
+                f"• Stock creators earn dividends based on shares held by others\n"
+                f"• Use `!dividends` to check your dividend status"
+            ),
+            inline=False
+        )
+        
+        # Add decay info
+        embed.add_field(
+            name="📉 Stock Decay System",
+            value=(
+                f"• When there are more than {config.STOCK_DECAY_THRESHOLD} stocks, the least popular ones decay\n"
+                f"• Decaying stocks lose {config.STOCK_DECAY_PERCENT}% value each update\n"
+                f"• Use `!decayrisk` to check which stocks are at risk"
+            ),
             inline=False
         )
         

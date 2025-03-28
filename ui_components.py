@@ -58,23 +58,9 @@ class ChartView(View):
             for symbol, risk in risk_stocks:
                 if symbol == self.symbol:
                     if risk >= 90:
-                        decay_warning = "♨️ DECAYING! "
+                        decay_warning = "♨️ DECAYING - "
                         decay_field = {
-                            "name": "♨️ STOCK DECAY ACTIVE",
-                            "value": (
-                                f"This stock is losing {config.STOCK_DECAY_PERCENT}% value each update due to low popularity!\n"
-                                "To prevent further decay, more users need to invest in this stock."
-                            ),
-                            "inline": False
-                        }
-                    elif risk >= 50:
-                        decay_warning = "⚠️ DECAY RISK! "
-                        decay_field = {
-                            "name": "⚠️ High Decay Risk",
-                            "value": (
-                                "This stock is at high risk of value decay due to having few shareholders.\n"
-                                "It may start losing value soon unless more users invest in it."
-                            ),
+                            "value": ("To prevent further decay, more users need to invest in this stock."),
                             "inline": False
                         }
                     break

@@ -1,5 +1,5 @@
 """
-Stock market simulation module for CH3F Exchange Discord Bot
+Stock market simulation module for Discord Exchange Bot
 Handles stock data, market conditions, and price updates
 """
 import discord
@@ -71,7 +71,14 @@ class StockManager:
                 
                 # Load symbols and mappings if available in new format
                 if "STOCK_SYMBOLS" in data:
-                    cls.stock_symbols = data["STOCK_SYMBOLS"]
+                    # Make sure stock_symbols is a list
+                    if isinstance(data["STOCK_SYMBOLS"], list):
+                        cls.stock_symbols = data["STOCK_SYMBOLS"]
+                    else:
+                        # Convert from dict or other type to list
+                        logger.warning("Converting STOCK_SYMBOLS from non-list to list")
+                        cls.stock_symbols = list(data["STOCK_SYMBOLS"].keys() if isinstance(data["STOCK_SYMBOLS"], dict) 
+                                            else data["STOCK_SYMBOLS"])
                 else:
                     # Fallback to config for backward compatibility
                     cls.stock_symbols = list(config.STOCK_SYMBOLS)
@@ -226,31 +233,37 @@ class StockManager:
                 "name": "bear", 
                 "weight": 0.2,
                 "min_change": random.uniform(-5, -1),
-                "max_change": random.uniform(-1, 2),
+                "max_change": random.uniform(0, 2),
             },
             {
                 "name": "bull", 
                 "weight": 0.2,
-                "min_change": random.uniform(-1, 1),
-                "max_change": random.uniform(2, 5),
+                "min_change": random.uniform(-.5, 1),
+                "max_change": random.uniform(2, 5.5),
+            },
+            {
+                "name": "superbull", 
+                "weight": 0.02,
+                "min_change": random.uniform(0, 1),
+                "max_change": random.uniform(4, 8),
             },
             {
                 "name": "volatile", 
                 "weight": 0.2,
-                "min_change": random.uniform(-7, -3),
-                "max_change": random.uniform(3, 7),
+                "min_change": random.uniform(-8, -3),
+                "max_change": random.uniform(3, 8),
             },
             {
                 "name": "stable", 
                 "weight": 0.35,  
-                "min_change": random.uniform(-3, -1),
-                "max_change": random.uniform(1, 3),
+                "min_change": random.uniform(-4, -1),
+                "max_change": random.uniform(1, 4),
             },
             {
                 "name": "crash", 
-                "weight": 0.05,  
-                "min_change": random.uniform(-15, -8),
-                "max_change": random.uniform(-8, -3),
+                "weight": 0.03,  
+                "min_change": random.uniform(-12, -8),
+                "max_change": random.uniform(-8, -4),
             }
         ]
         
@@ -344,6 +357,11 @@ class StockManager:
     @classmethod
     async def add_stock(cls, symbol, user_id) -> bool:
         try:
+            # Ensure stock_symbols is a list
+            if not isinstance(cls.stock_symbols, list):
+                cls.stock_symbols = list(cls.stock_symbols.keys()) if isinstance(cls.stock_symbols, dict) else []
+                logger.warning(f"Converted stock_symbols to list: {cls.stock_symbols}")
+            
             # Add to internal data structures
             cls.stock_symbols.append(symbol)
             cls.user_to_ticker[str(user_id)] = symbol
@@ -625,7 +643,7 @@ class StockManager:
         
         # Add labels and grid
         ax.set_xlabel("Time Steps")
-        ax.set_ylabel(f"{symbol} Price (CCD)")
+        ax.set_ylabel(f"{symbol} Price ({config.UOM})")
         ax.grid(True)
         
         # Add watermark

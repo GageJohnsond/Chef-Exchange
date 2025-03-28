@@ -1,5 +1,5 @@
 """
-Data management module for CH3F Exchange Discord Bot
+Data management module for Stock Exchange Discord Bot
 Handles loading and saving data from JSON files
 """
 import os
@@ -9,7 +9,7 @@ from typing import Dict, Any, Union
 
 import config
 
-logger = logging.getLogger('ch3f_exchange.data')
+logger = logging.getLogger('stock_exchange.data')
 
 class DataManager:
     """Class to handle all data loading and saving operations"""
@@ -29,8 +29,8 @@ class DataManager:
                 json.dump({
                     "STOCK_PRICES": {},
                     "PRICE_HISTORY": {},
-                    "STOCK_SYMBOLS": list(config.STOCK_SYMBOLS),
-                    "USER_TO_TICKER": dict(config.USER_TO_TICKER)
+                    "STOCK_SYMBOLS": {},
+                    "USER_TO_TICKER": {}
                 }, f)
             logger.info(f"Created empty {config.STOCKS_FILE} with initial data")
             

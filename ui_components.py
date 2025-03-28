@@ -422,7 +422,7 @@ class HelpView(View):
             name="💰 Dividend System",
             value=(
                 f"• Top {config.TOP_SHAREHOLDERS_COUNT} shareholders in each stock receive daily dividends\n"
-                f"• Stock creators earn dividends based on shares held by others\n"
+                f"• Stock owners earn dividends based on shares held by others\n"
                 f"• Use `!dividends` to check your dividend status"
             ),
             inline=False
@@ -433,7 +433,7 @@ class HelpView(View):
             name="📉 Stock Decay System",
             value=(
                 f"• When there are more than {config.STOCK_DECAY_THRESHOLD} stocks, the least popular ones decay\n"
-                f"• Decaying stocks lose {config.STOCK_DECAY_PERCENT}% value each update\n"
+                f"• Decaying stocks lose value overtime. Get more investors to stay safe from decay.\n"
                 f"• Use `!decayrisk` to check which stocks are at risk"
             ),
             inline=False

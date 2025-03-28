@@ -41,8 +41,8 @@ TOP_SHAREHOLDER_DIVIDENDS = {
 }
 
 # Stock decay settings
-STOCK_DECAY_THRESHOLD = 15  # Maximum number of stocks before decay starts
-STOCK_DECAY_PERCENT = 3.0   # Percentage to reduce price by on each update
+STOCK_DECAY_THRESHOLD = 10  # Maximum number of stocks before decay starts
+STOCK_DECAY_PERCENT = 2.0   # Percentage to reduce price by on each update
 STOCK_BANKRUPTCY_THRESHOLD = 5.0  # Price threshold for bankruptcy warning
 
 # Message rewards

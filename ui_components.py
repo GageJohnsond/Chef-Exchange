@@ -107,7 +107,6 @@ class ChartView(View):
         # Add decay warning field if applicable
         if decay_field:
             embed.add_field(
-                name=decay_field["name"],
                 value=decay_field["value"],
                 inline=decay_field["inline"]
             )

@@ -1,5 +1,5 @@
 """
-Leaderboard management module for CH3F Exchange Discord Bot
+Leaderboard management module for Stock Exchange Discord Bot
 Handles the persistent leaderboard messages
 """
 import json
@@ -13,7 +13,7 @@ from discord.ext import tasks
 import config
 from ui_components import BalanceLeaderboardView, StockLeaderboardView
 
-logger = logging.getLogger('ch3f_exchange.leaderboard')
+logger = logging.getLogger('stock_exchange.leaderboard')
 
 class LeaderboardManager:
     """Class to handle persistent leaderboard messages"""
@@ -119,7 +119,7 @@ class LeaderboardManager:
             embed = cls.balance_view.get_embed(channel.guild)
             
             message = await channel.send(
-                "🏆 **$CCD BALANCE LEADERBOARD**\nThis message updates automatically.",
+                f"🏆 **${config.UOM} BALANCE LEADERBOARD**\nThis message updates automatically.",
                 embed=embed,
                 view=cls.balance_view
             )

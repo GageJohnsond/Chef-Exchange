@@ -113,7 +113,7 @@ def gift(ctx, user, amount):
     # Check balance
     bal = UserManager.get_balance(ctx.author.id)
     if bal < amount:
-        return "❌ You don't have enough ${config.UOM} for this gift."
+        return f"❌ You don't have enough ${config.UOM} for this gift."
     
     # Transfer the amount
     UserManager.update_balance(ctx.author.id, -amount)

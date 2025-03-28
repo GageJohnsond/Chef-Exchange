@@ -1,5 +1,5 @@
 """
-Admin Commands module for CH3F Exchange Discord Bot
+Admin Commands module for the Stock Exchange Discord Bot
 """
 import random
 import logging
@@ -15,7 +15,7 @@ from user_manager import UserManager
 from stock_manager import StockManager
 from ui_components import ChartView, HelpView, BalanceLeaderboardView, StockLeaderboardView
 
-logger = logging.getLogger('ch3f_exchange.admin_commands')
+logger = logging.getLogger('stock_exchange.admin_commands')
 
 async def admin_add(ctx, target, amount, bot=None):
     """Admin command to add value to a stock"""
@@ -453,7 +453,7 @@ async def admin_gift(ctx, target, amount, bot=None):
     # Create a response embed
     embed = discord.Embed(
         title="💰 Admin Currency Action",
-        description=f"{'Added' if amount_value >= 0 else 'Removed'} **${abs(amount_value):.2f} CCD** {'to' if amount_value >= 0 else 'from'} {target}",
+        description=f"{'Added' if amount_value >= 0 else 'Removed'} **${abs(amount_value):.2f} {config.UOM}** {'to' if amount_value >= 0 else 'from'} {target}",
         color=config.COLOR_WARNING
     )
     
@@ -545,7 +545,7 @@ async def admin_create_stock(ctx, symbol, initial_price=None, user=None, bot=Non
     # Create response embed
     embed = discord.Embed(
         title="🔧 Admin: Stock Created",
-        description=f"Created new stock **{symbol}** with initial price **${price:.2f} CCD**",
+        description=f"Created new stock **{symbol}** with initial price **${price:.2f} {config.UOM}**",
         color=config.COLOR_WARNING
     )
     
@@ -768,7 +768,7 @@ async def admin_market_condition(ctx, condition=None, bot=None):
                     inline=False
                 )
                 
-                crash_embed.set_footer(text="The CH3F Exchange | Market Crash Triggered by Admin")
+                crash_embed.set_footer(text=f"The {config.NAME} Exchange | Market Crash Triggered by Admin")
                 
                 await terminal_channel.send("@everyone", embed=crash_embed)
                 logger.info(f"Admin {ctx.author.id} triggered market crash announcement")
@@ -817,7 +817,7 @@ async def admin_award_all(ctx, amount, bot=None):
     # Create response embed
     embed = discord.Embed(
         title="🔧 Currency Awarded to All Users",
-        description=f"{'Added' if amount_value >= 0 else 'Removed'} **${abs(amount_value):.2f} CCD** {'to' if amount_value >= 0 else 'from'} all users",
+        description=f"{'Added' if amount_value >= 0 else 'Removed'} **${abs(amount_value):.2f} {config.UOM}** {'to' if amount_value >= 0 else 'from'} all users",
         color=config.COLOR_WARNING
     )
     
@@ -964,7 +964,7 @@ async def admin_help(ctx, bot=None):
     # Create help embed with all admin commands
     embed = discord.Embed(
         title="🔧 Admin Commands",
-        description="List of all available admin commands for the CH3F Exchange Bot",
+        description=f"List of all available admin commands for the {config.NAME} Exchange Bot",
         color=config.COLOR_WARNING
     )
     
@@ -1021,7 +1021,6 @@ async def admin_help(ctx, bot=None):
     embed.add_field(
         name="📝 Notes",
         value=(
-            "• All admin commands require the user to be an admin\n"
             "• Market conditions: `bear`, `bull`, `volatile`, `stable`, `crash`\n"
             "• Use negative amounts with `admin_gift` to remove currency"
         ),

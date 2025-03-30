@@ -352,7 +352,7 @@ class HelpView(View):
                 "`!portfolio` or `!port` - View your stock portfolio\n"
                 f"`!rebrand <symbol>` or `!rename <symbol>` - Rebrand your stock (costs ${config.REBRAND_FEE} {config.UOM})\n"
                 f"`!createstock <symbol>` or `!ipo <symbol>` - Create your own stock (costs ${config.IPO_COST} {config.UOM})\n"
-                "`!decayrisk` or `!stockrisk` - Check which stocks are at risk of decay"
+                "`!decay` - Check which stocks are decaying"
             ),
             inline=False
         )
@@ -392,7 +392,7 @@ class HelpView(View):
             value=(
                 f"• When there are more than {config.STOCK_DECAY_THRESHOLD} stocks, the least popular ones decay\n"
                 f"• Decaying stocks lose value overtime. Get more investors to stay safe from decay.\n"
-                f"• Use `!decayrisk` to check which stocks are at risk"
+                f"• Use `!decay` to check which stocks are decaying"
             ),
             inline=False
         )

@@ -559,8 +559,8 @@ def dividend_status(ctx):
 
     return embed
 
-def decay_risk(ctx):
-    """Check which stocks are at risk of decay"""
+def decay(ctx):
+    """Check which stocks are actively decaying"""
     # Import decay manager
     from decay import DecayManager
     
@@ -579,97 +579,58 @@ def decay_risk(ctx):
         
         embed.add_field(
             name="Status",
-            value=f"No stocks are at risk of decay at this time.",
-            inline=False
-        )
-        
-        # Add information about how decay works
-        embed.add_field(
-            name="About Stock Decay",
-            value=(
-                f"When the number of stocks exceeds {threshold}, the least popular "
-                f"stocks will lose their value overtime."
-            ),
+            value=f"No stocks are decaying at this time.",
             inline=False
         )
     else:
-        # Calculate stocks at risk
+        # Calculate how many stocks should be decaying (excess count)
         excess = total_stocks - threshold
-        risk_stocks = DecayManager.get_decay_risk_stocks()
+        
+        # Get popularity data to determine which stocks are actually decaying
+        stock_popularity = DecayManager._calculate_stock_popularity()
+        
+        # Sort by popularity (ascending, least popular first)
+        sorted_stocks = sorted(stock_popularity.items(), key=lambda x: x[1])
+        
+        # Get ONLY the least popular stocks up to the excess count
+        # These are the ones that are actually decaying
+        decaying_stocks = [symbol for symbol, _ in sorted_stocks[:excess]]
         
         embed = discord.Embed(
-            title="⚠️ Stock Decay Warning",
-            description=(
-                f"There are currently **{total_stocks}/{threshold}** stocks on the exchange.\n"
-                f"**{excess}** stocks are experiencing price decay!"
-            ),
-            color=config.COLOR_ERROR
+            title="📉 Stock Decay Status",
+            description=f"There are currently **{total_stocks}/{threshold}** stocks on the exchange.",
+            color=config.COLOR_WARNING if decaying_stocks else config.COLOR_SUCCESS
         )
         
-        # Add list of stocks at risk
-        if risk_stocks:
-            # Group by risk level
-            definite_decay = []
-            high_risk = []
-            medium_risk = []
-            low_risk = []
+        if decaying_stocks:
+            # Format the decaying stocks list with prices
+            decay_list = []
+            for symbol in decaying_stocks:
+                price = StockManager.stock_prices.get(symbol, 0)
+                decay_list.append(f"**{symbol}** - ${price:.2f}")
             
-            for symbol, risk in risk_stocks:
-                if risk >= 90:
-                    definite_decay.append(symbol)
-                elif risk >= 50:
-                    high_risk.append(symbol)
-                elif risk >= 25:
-                    medium_risk.append(symbol)
-                else:
-                    low_risk.append(symbol)
+            embed.add_field(
+                name=f"🔴 Actively Decaying Stocks ({len(decaying_stocks)})",
+                value="\n".join(decay_list) if decay_list else "None",
+                inline=False
+            )
             
-            # Add fields for each risk level
-            if definite_decay:
-                embed.add_field(
-                    name="🔴 Currently Decaying",
-                    value=", ".join([f"**{s}**" for s in definite_decay]),
-                    inline=False
-                )
-            
-            if high_risk:
-                embed.add_field(
-                    name="🟠 High Risk (50-90%)",
-                    value=", ".join([f"**{s}**" for s in high_risk]),
-                    inline=False
-                )
-            
-            if medium_risk:
-                embed.add_field(
-                    name="🟡 Medium Risk (25-50%)",
-                    value=", ".join([f"**{s}**" for s in medium_risk]),
-                    inline=False
-                )
-            
-            if low_risk:
-                embed.add_field(
-                    name="🟢 Low Risk (<25%)",
-                    value=", ".join([f"**{s}**" for s in low_risk]),
-                    inline=False
-                )
-        
-        # Add explanation of what decay means
-        embed.add_field(
-            name="How Decay Works",
-            value=(f"Decaying stocks lose value overtime. To prevent decay, these stocks need more shareholders!\n"),
-            inline=False
-        )
-        
-        # Add advice for owners of at-risk stocks
-        embed.add_field(
-            name="If Your Stock Is At Risk",
-            value=(
-                "• Encourage others to invest in your stock\n"
-                "• Consider offering incentives to shareholders\n"
-                "• If price gets too low, you risk bankruptcy"
-            ),
-            inline=False
-        )
+            # Add explanation
+            embed.add_field(
+                name="What This Means",
+                value=(
+                    f"These stocks are losing their value, "
+                    f"because the exchange has exceeded the maximum of {threshold} stocks.\n"
+                    "To prevent further decay, these stocks need more shareholders!"
+                ),
+                inline=False
+            )
+        else:
+            embed.add_field(
+                name="Status",
+                value="No stocks are actively decaying, even though the exchange is over capacity.",
+                inline=False
+            )
     
     return embed
 
@@ -717,8 +678,8 @@ async def process_command(bot, message):
         elif command in ['dividends', 'div']:
             return dividend_status(ctx)
 
-        elif command in ['decayrisk', 'stockrisk']:
-            return decay_risk(ctx)
+        elif command == 'decay':
+            return decay(ctx)
         
         elif command in ['mystocks', 'portfolio', 'port']:
             return mystocks(ctx)

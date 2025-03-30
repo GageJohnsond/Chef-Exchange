@@ -113,7 +113,6 @@ class DecayManager:
             
             # Final popularity score calculation
             stock_popularity[symbol] = holders + creator_score
-        
         return stock_popularity
     
     @classmethod

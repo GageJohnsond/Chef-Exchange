@@ -78,42 +78,36 @@ class DecayManager:
     @classmethod
     def _calculate_stock_popularity(cls) -> Dict[str, int]:
         """
-        Calculate popularity score for each stock based on number of shareholders.
+        Calculate popularity score for each stock based only on total shares held.
         
         Returns:
-            Dictionary mapping stock symbols to their popularity score
+            Dictionary mapping stock symbols to their total shares held
         """
         # Load user data
         user_data = DataManager.load_data(config.USER_DATA_FILE)
+        all_symbols = StockManager.get_all_symbols()
         
-        # Count shareholders for each stock
-        stock_holders = {symbol: 0 for symbol in StockManager.get_all_symbols()}
+        # Initialize total shares counter for each stock
+        total_shares = {symbol: 0 for symbol in all_symbols}
         
+        # Count total shares for each stock
         for user_id, data in user_data.items():
             inventory = data.get("inventory", {})
-            
             for stock, quantity in inventory.items():
-                if stock in stock_holders and quantity > 0:
-                    stock_holders[stock] += 1
+                if stock in total_shares and quantity > 0:
+                    total_shares[stock] += quantity
         
-        # Calculate popularity score (currently just shareholder count)
-        # This could be expanded to include other factors like trading volume, etc.
-        stock_popularity = {}
+        # Add a tiny value based on symbol to avoid ties and ensure consistent sorting
+        popularity_scores = {}
+        for symbol, shares in total_shares.items():
+            # Add a tiny fraction based on symbol name for tie-breaking
+            symbol_value = sum(ord(c) / 10000.0 for c in symbol)
+            popularity_scores[symbol] = shares + symbol_value
+            
+            # Log the calculation
+            logger.debug(f"Stock {symbol}: {shares} total shares, score: {popularity_scores[symbol]}")
         
-        for symbol, holders in stock_holders.items():
-            # Get creator user_id for this stock
-            creator_id = None
-            for user_id, ticker in StockManager.user_to_ticker.items():
-                if ticker == symbol:
-                    creator_id = user_id
-                    break
-            
-            # Add to popularity score when stock is owned by the creator
-            creator_score = 1 if creator_id in user_data and symbol in user_data[creator_id].get("inventory", {}) else 0
-            
-            # Final popularity score calculation
-            stock_popularity[symbol] = holders + creator_score
-        return stock_popularity
+        return popularity_scores
     
     @classmethod
     def get_decay_risk_stocks(cls) -> List[Tuple[str, float]]:

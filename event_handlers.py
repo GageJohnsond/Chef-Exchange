@@ -13,6 +13,7 @@ import discord
 from discord.ext import commands, tasks
 
 import config
+from decay import DecayManager
 from dividends import DividendManager
 from data_manager import DataManager
 from user_manager import UserManager
@@ -172,6 +173,8 @@ class EventHandlers:
         # Handle bankruptcy announcements if any
         if bankruptcy_announcements:
             await self.handle_bankruptcy_announcements(bankruptcy_announcements)
+
+        decayed_stocks = DecayManager.apply_stock_decay()
         
         # Edit stock messages
         channel = self.bot.get_channel(config.STOCK_CHANNEL_ID)
